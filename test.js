@@ -4,6 +4,7 @@ const { RealtimeSession } = require('speechmatics');
 
 const API_KEY = 'HeSsji9rY7ytrv8H2iMuO5LXDp59J2xS';
 const WS_PORT = 8888; // WebSocket server port
+console.log('asdasd');
 
 // Speechmatics session setup
 const session = new RealtimeSession({ apiKey: API_KEY });
@@ -12,9 +13,6 @@ session.addListener('Error', (error) => {
   console.log('session error', error);
 });
 
-session.addListener('AddTranscript', (message) => {
-  process.stdout.write(message.metadata.transcript);
-});
 
 session.addListener('EndOfTranscript', () => {
   process.stdout.write('\n');
@@ -38,7 +36,6 @@ session
 const wsServer = new WebSocket.Server({ port: WS_PORT });
 wsServer.on('connection', (ws) => {
   console.log('ESP32 connected');
-
   ws.on('message', (sample) => {
     session.sendAudio(sample);
   });
@@ -46,5 +43,14 @@ wsServer.on('connection', (ws) => {
   ws.on('close', () => {
     console.log('ESP32 disconnected');
     session.stop(); // Stop the Speechmatics session when the WebSocket disconnects
+  });
+});
+
+session.addListener('AddTranscript', (message) => {
+  process.stdout.write(message.metadata.transcript);
+  wsServer.clients.forEach(function each(client) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message.metadata.transcript);
+    }
   });
 });
